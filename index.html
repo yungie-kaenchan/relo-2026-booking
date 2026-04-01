@@ -1,0 +1,619 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>RELO 2026 Showcase — Consultation Booking Portal</title>
+<meta name="description" content="Book your consultation slot with RELO 2026 Showcase Project facilitators." />
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📅</text></svg>" />
+<link rel="preconnect" href="https://fonts.googleapis.com" />
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display&family=DM+Sans:ital,wght@0,400;0,500;0,600;0,700;1,400&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap" rel="stylesheet" />
+<!-- Firebase SDK (compat) -->
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
+<!-- React -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.3.1/umd/react.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.3.1/umd/react-dom.production.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.26.2/babel.min.js"></script>
+<style>
+  *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+  html{scroll-behavior:smooth}
+  body{background:#FAFAF8;font-family:'DM Sans','Noto Sans Thai',sans-serif;color:#2A2A28;-webkit-font-smoothing:antialiased}
+  input:focus{outline:none;border-color:#1B4965!important;box-shadow:0 0 0 3px rgba(27,73,101,.12)!important}
+  button{transition:all .18s ease;font-family:'DM Sans','Noto Sans Thai',sans-serif}
+  button:hover:not(:disabled){filter:brightness(1.06);transform:translateY(-1px)}
+  button:active:not(:disabled){transform:translateY(0)}
+  @keyframes fadeUp{from{opacity:0;transform:translateY(16px)}to{opacity:1;transform:translateY(0)}}
+  .fade-up{animation:fadeUp .45s ease-out both}
+  .fade-d1{animation-delay:.08s}.fade-d2{animation-delay:.16s}
+  @keyframes pop{0%{transform:scale(.8);opacity:0}60%{transform:scale(1.05)}100%{transform:scale(1);opacity:1}}
+  .pop-in{animation:pop .5s ease-out both}
+  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+  .live-dot{width:8px;height:8px;border-radius:50%;background:#2D6A4F;display:inline-block;animation:pulse 1.5s infinite}
+</style>
+</head>
+<body>
+<div id="root"></div>
+
+<script>
+// ══════════════════════════════════════════════════════════════
+//  FIREBASE CONFIG
+// ══════════════════════════════════════════════════════════════
+const firebaseConfig = {
+  apiKey: "AIzaSyDLfVAcK98thZ3cIa0mO_4lac1aloOEDBE",
+  authDomain: "relo-2026-booking.firebaseapp.com",
+  databaseURL: "https://relo-2026-booking-default-rtdb.asia-southeast1.firebasedatabase.app",
+  projectId: "relo-2026-booking",
+  storageBucket: "relo-2026-booking.firebasestorage.app",
+  messagingSenderId: "68515160394",
+  appId: "1:68515160394:web:dc7dd19fdcab657f62e1b3"
+};
+firebase.initializeApp(firebaseConfig);
+const db = firebase.database();
+const bookingsRef = db.ref("relo2026/bookings");
+</script>
+
+<script type="text/babel">
+const { useState, useEffect, useCallback, useMemo } = React;
+
+/* ══════════════════════════════════════════════════════════════
+   STYLES — defined FIRST so components can reference S
+   ══════════════════════════════════════════════════════════════ */
+const S = {
+  header:{background:"linear-gradient(135deg,#1B4965 0%,#2D6A4F 50%,#1B4965 100%)",padding:"32px 24px 0",textAlign:"center",position:"relative"},
+  headerInner:{position:"relative",zIndex:1},
+  badge:{display:"inline-block",background:"rgba(255,255,255,.15)",backdropFilter:"blur(8px)",color:"#fff",fontSize:11,fontWeight:700,letterSpacing:3,textTransform:"uppercase",padding:"5px 16px",borderRadius:40,border:"1px solid rgba(255,255,255,.2)"},
+  h1:{fontFamily:"'DM Serif Display','Noto Sans Thai',serif",color:"#fff",fontSize:"clamp(24px,5vw,36px)",fontWeight:400,lineHeight:1.2,marginBottom:2},
+  h2:{color:"rgba(255,255,255,.85)",fontSize:"clamp(14px,3vw,17px)",fontWeight:500,marginBottom:6},
+  headerP:{color:"rgba(255,255,255,.6)",fontSize:13,maxWidth:520,margin:"0 auto",lineHeight:1.6,paddingBottom:10},
+  nav:{display:"flex",justifyContent:"center",gap:4,marginTop:4,position:"relative",zIndex:1},
+  navBtn:{display:"flex",flexDirection:"column",alignItems:"center",gap:1,padding:"10px 20px",border:"none",color:"#fff",fontSize:14,fontWeight:600,cursor:"pointer",borderRadius:"10px 10px 0 0",transition:"all .2s"},
+  wave:{position:"relative",marginTop:-1},
+  main:{maxWidth:760,margin:"0 auto",padding:"20px 16px 40px"},
+  card:{background:"#fff",borderRadius:16,padding:"24px 22px",boxShadow:"0 1px 6px rgba(0,0,0,.04),0 4px 20px rgba(0,0,0,.025)",border:"1px solid #ECEAE5"},
+  cardT:{fontFamily:"'DM Serif Display','Noto Sans Thai',serif",fontSize:19,color:"#1B4965",marginBottom:16,fontWeight:400},
+  fg:{marginBottom:16},
+  label:{display:"block",fontSize:13,fontWeight:600,color:"#555",marginBottom:5},
+  input:{width:"100%",padding:"11px 15px",fontSize:15,border:"1.5px solid #DDD",borderRadius:10,fontFamily:"'DM Sans','Noto Sans Thai',sans-serif",background:"#FAFAF8",transition:"all .2s"},
+  btnP:{background:"linear-gradient(135deg,#1B4965,#2D6A4F)",color:"#fff",border:"none",padding:"11px 26px",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer"},
+  btnS:{background:"#fff",color:"#1B4965",border:"1.5px solid #1B496533",padding:"11px 22px",borderRadius:10,fontSize:14,fontWeight:600,cursor:"pointer"},
+  steps:{display:"flex",alignItems:"center",justifyContent:"center",marginBottom:24,flexWrap:"wrap"},
+  stepDot:{width:30,height:30,borderRadius:"50%",display:"flex",alignItems:"center",justifyContent:"center",fontSize:13,fontWeight:700,transition:"all .3s"},
+  stepLine:{width:36,height:2,borderRadius:2,margin:"0 6px",transition:"background .3s"},
+  statsBar:{display:"flex",gap:16,marginBottom:16,flexWrap:"wrap",fontSize:13,color:"#666"},
+  statItem:{display:"flex",alignItems:"center",gap:6},
+  statDot:{width:10,height:10,borderRadius:"50%"},
+  filterRow:{display:"flex",gap:8,marginBottom:18,flexWrap:"wrap"},
+  filterBtn:{padding:"7px 14px",borderRadius:20,border:"none",fontSize:13,fontWeight:600,cursor:"pointer"},
+  dateHdr:{display:"flex",alignItems:"center",gap:10,marginBottom:10,paddingBottom:6,borderBottom:"2px solid #ECEAE5"},
+  dayBadge:{fontSize:12,fontWeight:600,color:"#888",background:"#F0EEEA",padding:"2px 10px",borderRadius:12},
+  grid:{display:"grid",gridTemplateColumns:"repeat(auto-fill,minmax(195px,1fr))",gap:10},
+  slotBtn:{padding:"12px 14px",borderRadius:12,border:"2px solid #E8E6E1",textAlign:"left",fontFamily:"'DM Sans','Noto Sans Thai',sans-serif",transition:"all .2s"},
+  chk:{color:"#fff",fontSize:11,fontWeight:700,width:20,height:20,borderRadius:"50%",display:"inline-flex",alignItems:"center",justifyContent:"center",marginLeft:"auto"},
+  bookedTag:{fontSize:11,fontWeight:600,color:"#B0564D",background:"#FCEAE8",padding:"2px 10px",borderRadius:12,marginLeft:"auto"},
+  lockedTeam:{fontSize:11,color:"#B0564D",fontWeight:600,background:"#FCEAE8",padding:"3px 8px",borderRadius:6,display:"inline-block",marginTop:6},
+  lockedTeamInline:{background:"#FCEAE8",color:"#B0564D",fontWeight:600,padding:"3px 10px",borderRadius:8,fontSize:13,display:"inline-block"},
+  availBadge:{background:"#D8F3DC",color:"#2D6A4F",fontWeight:600,fontSize:12,padding:"3px 12px",borderRadius:8},
+  bottomBar:{display:"flex",justifyContent:"space-between",alignItems:"center",marginTop:22,paddingTop:18,borderTop:"2px solid #ECEAE5",flexWrap:"wrap",gap:12},
+  sumBox:{background:"#F8F7F4",borderRadius:12,overflow:"hidden",border:"1px solid #E8E6E1"},
+  sumRow:{display:"flex",justifyContent:"space-between",padding:"13px 18px",borderBottom:"1px solid #E8E6E1",fontSize:14},
+  sumL:{color:"#888",fontWeight:500},
+  sumV:{fontWeight:600,color:"#2A2A28"},
+  cfSlot:{padding:"10px 14px",borderLeft:"4px solid",background:"#F8F7F4",borderRadius:"0 10px 10px 0",marginBottom:8},
+  receipt:{border:"1.5px solid #E8E6E1",borderRadius:14,overflow:"hidden"},
+  receiptHead:{background:"linear-gradient(135deg,#1B4965,#2D6A4F)",padding:"14px 20px",color:"#fff",display:"flex",justifyContent:"space-between",alignItems:"center",flexWrap:"wrap",gap:8},
+  receiptLabel:{fontSize:12,color:"#999",fontWeight:600,letterSpacing:.5,textTransform:"uppercase"},
+  receiptVal:{fontWeight:600,fontSize:15,marginTop:2},
+  receiptSlot:{padding:"8px 12px",borderLeft:"3px solid",background:"#F8F7F4",borderRadius:"0 8px 8px 0",marginBottom:6},
+  zoomCard:{background:"#F5F9FC",border:"1.5px solid #D6E8F0",borderRadius:12,padding:"16px 18px",marginTop:16},
+  zoomRow:{display:"flex",justifyContent:"space-between",alignItems:"center",padding:"8px 0",borderBottom:"1px solid #E0EBF0",fontSize:14,flexWrap:"wrap",gap:4},
+  zoomLabel:{fontSize:12,fontWeight:600,color:"#888"},
+  zoomVal:{fontWeight:600,color:"#1B4965"},
+  zoomLink:{color:"#1B4965",fontWeight:700,fontSize:13,textDecoration:"none",background:"#D6E8F0",padding:"5px 14px",borderRadius:8},
+  zoomCode:{fontWeight:700,color:"#1B4965",background:"#F0EEEA",padding:"2px 10px",borderRadius:6,fontFamily:"monospace",letterSpacing:1,fontSize:14},
+  overviewGrid:{display:"grid",gridTemplateColumns:"repeat(auto-fit,minmax(130px,1fr))",gap:12},
+  overviewItem:{background:"#F8F7F4",borderRadius:12,padding:"16px 18px",borderLeft:"4px solid"},
+  teamCard:{background:"#F8F7F4",borderRadius:12,padding:"16px 18px",marginBottom:12,border:"1px solid #ECEAE5"},
+  teamCount:{background:"#D6E8F0",color:"#1B4965",fontWeight:700,fontSize:12,padding:"4px 12px",borderRadius:12},
+  teamSlot:{display:"flex",gap:12,alignItems:"center",padding:"8px 12px",borderLeft:"3px solid",background:"#fff",borderRadius:"0 8px 8px 0",marginBottom:4,fontSize:13,flexWrap:"wrap"},
+  dashSlot:{display:"flex",alignItems:"center",gap:12,padding:"10px 14px",borderLeft:"4px solid",background:"#F8F7F4",borderRadius:"0 10px 10px 0",marginBottom:6,flexWrap:"wrap"},
+  footer:{textAlign:"center",padding:"22px 16px",fontSize:12,color:"#AAA",borderTop:"1px solid #ECEAE5"},
+  errBox:{background:"#FCEAE8",color:"#B0564D",padding:"12px 16px",borderRadius:10,fontSize:14,fontWeight:500,marginBottom:16,border:"1px solid #F5C6C2"},
+};
+
+/* ══════════════════════════════════════════════════════════════
+   DATA
+   ══════════════════════════════════════════════════════════════ */
+const ZOOM = {
+  link: "https://us06web.zoom.us/j/9618241214?pwd=JbMn2cebtdQJuRhwM56Ctw2UVS2QSq.1",
+  id: "961 824 1214",
+  passcode: "bW7D5j",
+};
+
+const FACILITATORS = [
+  { id:"kwang", name:"Aj. Kwang", color:"#2D6A4F", light:"#D8F3DC", icon:"🌿" },
+  { id:"bam",   name:"Aj. Bam",   color:"#7B2D8B", light:"#F0DAF5", icon:"🔮" },
+  { id:"yungie",name:"Aj. Yungie",color:"#1B4965", light:"#D6E8F0", icon:"🌊" },
+];
+
+const SLOTS = [
+  { id:"k1",facilitator:"kwang",date:"2026-04-06",day:"Mon",dateLabel:"Apr 6",time:"18:00–18:30",start:"18:00",end:"18:30" },
+  { id:"k2",facilitator:"kwang",date:"2026-04-06",day:"Mon",dateLabel:"Apr 6",time:"18:40–19:10",start:"18:40",end:"19:10" },
+  { id:"k3",facilitator:"kwang",date:"2026-04-06",day:"Mon",dateLabel:"Apr 6",time:"19:20–19:50",start:"19:20",end:"19:50" },
+  { id:"b1",facilitator:"bam",date:"2026-04-08",day:"Wed",dateLabel:"Apr 8",time:"18:00–18:30",start:"18:00",end:"18:30" },
+  { id:"b2",facilitator:"bam",date:"2026-04-08",day:"Wed",dateLabel:"Apr 8",time:"18:40–19:10",start:"18:40",end:"19:10" },
+  { id:"b3",facilitator:"bam",date:"2026-04-08",day:"Wed",dateLabel:"Apr 8",time:"19:20–19:50",start:"19:20",end:"19:50" },
+  { id:"b4",facilitator:"bam",date:"2026-04-16",day:"Thu",dateLabel:"Apr 16",time:"18:00–18:30",start:"18:00",end:"18:30" },
+  { id:"b5",facilitator:"bam",date:"2026-04-16",day:"Thu",dateLabel:"Apr 16",time:"18:40–19:10",start:"18:40",end:"19:10" },
+  { id:"b6",facilitator:"bam",date:"2026-04-16",day:"Thu",dateLabel:"Apr 16",time:"19:20–19:50",start:"19:20",end:"19:50" },
+  { id:"y1",facilitator:"yungie",date:"2026-04-19",day:"Sun",dateLabel:"Apr 19",time:"10:00–10:30",start:"10:00",end:"10:30" },
+  { id:"y2",facilitator:"yungie",date:"2026-04-19",day:"Sun",dateLabel:"Apr 19",time:"10:40–11:10",start:"10:40",end:"11:10" },
+  { id:"y3",facilitator:"yungie",date:"2026-04-19",day:"Sun",dateLabel:"Apr 19",time:"11:20–11:50",start:"11:20",end:"11:50" },
+  { id:"y4",facilitator:"yungie",date:"2026-04-19",day:"Sun",dateLabel:"Apr 19",time:"12:00–12:30",start:"12:00",end:"12:30" },
+  { id:"y5",facilitator:"yungie",date:"2026-04-21",day:"Tue",dateLabel:"Apr 21",time:"18:00–18:30",start:"18:00",end:"18:30" },
+  { id:"y6",facilitator:"yungie",date:"2026-04-21",day:"Tue",dateLabel:"Apr 21",time:"18:40–19:10",start:"18:40",end:"19:10" },
+  { id:"y7",facilitator:"yungie",date:"2026-04-21",day:"Tue",dateLabel:"Apr 21",time:"19:20–19:50",start:"19:20",end:"19:50" },
+];
+
+const FI = (id) => FACILITATORS.find((f) => f.id === id);
+
+/* ══════════════════════════════════════════════════════════════
+   FIREBASE HOOK — real-time sync
+   ══════════════════════════════════════════════════════════════ */
+function useBookings() {
+  const [bookings, setBookings] = useState({});
+  const [loading, setLoading] = useState(true);
+  const [connected, setConnected] = useState(false);
+
+  useEffect(() => {
+    const onData = (snapshot) => {
+      setBookings(snapshot.val() || {});
+      setLoading(false);
+      setConnected(true);
+    };
+    const onError = (err) => {
+      console.error("Firebase read error:", err);
+      setLoading(false);
+      setConnected(false);
+    };
+    bookingsRef.on("value", onData, onError);
+
+    const connRef = firebase.database().ref(".info/connected");
+    const onConn = (snap) => { setConnected(!!snap.val()); };
+    connRef.on("value", onConn);
+
+    return () => {
+      bookingsRef.off("value", onData);
+      connRef.off("value", onConn);
+    };
+  }, []);
+
+  const book = useCallback(async (slotIds, team, booker) => {
+    const now = new Date().toISOString();
+    const updates = {};
+    slotIds.forEach((id) => { updates[id] = { team, booker, ts: now }; });
+    await bookingsRef.update(updates);
+  }, []);
+
+  return { bookings, loading, connected, book };
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ICS GENERATOR
+   ══════════════════════════════════════════════════════════════ */
+function makeICS(slots, team, booker) {
+  const evts = slots.map((s) => {
+    const f = FI(s.facilitator);
+    const ds = s.date.replace(/-/g,"")+"T"+s.start.replace(":","")+"00";
+    const de = s.date.replace(/-/g,"")+"T"+s.end.replace(":","")+"00";
+    return "BEGIN:VEVENT\r\nDTSTART;TZID=Asia/Bangkok:"+ds+"\r\nDTEND;TZID=Asia/Bangkok:"+de+"\r\nSUMMARY:RELO 2026 Consultation — "+f.name+"\r\nDESCRIPTION:Team: "+team+"\\nBooked by: "+booker+"\\n\\nZoom: "+ZOOM.link+"\\nMeeting ID: "+ZOOM.id+"\\nPasscode: "+ZOOM.passcode+"\r\nLOCATION:"+ZOOM.link+"\r\nSTATUS:CONFIRMED\r\nUID:relo26-"+s.id+"-"+Date.now()+"@booking\r\nEND:VEVENT";
+  });
+  return "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//RELO2026//EN\r\nCALSCALE:GREGORIAN\r\nMETHOD:PUBLISH\r\nX-WR-TIMEZONE:Asia/Bangkok\r\n"+evts.join("\r\n")+"\r\nEND:VCALENDAR";
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SHARED UI COMPONENTS
+   ══════════════════════════════════════════════════════════════ */
+function LiveBadge({ connected }) {
+  return (
+    <span style={{ display:"inline-flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:connected?"#2D6A4F":"#C1121F",background:connected?"#D8F3DC":"#FCEAE8",padding:"3px 10px",borderRadius:20 }}>
+      <span className={connected?"live-dot":""} style={connected?{}:{width:8,height:8,borderRadius:"50%",background:"#C1121F",display:"inline-block"}} />
+      {connected ? "Live" : "Offline"}
+    </span>
+  );
+}
+
+function Header({ page, setPage, connected }) {
+  return (
+    <header style={S.header}>
+      <div style={S.headerInner}>
+        <div style={{ display:"flex",justifyContent:"center",alignItems:"center",gap:10,marginBottom:8 }}>
+          <div style={S.badge}>RELO 2026</div>
+          <LiveBadge connected={connected} />
+        </div>
+        <h1 style={S.h1}>Showcase Project</h1>
+        <h2 style={S.h2}>Consultation Booking Portal</h2>
+        <p style={S.headerP}>เลือก slot เวลาที่สะดวกเพื่อปรึกษากับ facilitator · Select your preferred time slot(s)</p>
+      </div>
+      <nav style={S.nav}>
+        {[{id:"book",label:"📅 Book a Slot",th:"จองเวลา"},{id:"dashboard",label:"📊 All Bookings",th:"ดูการจองทั้งหมด"}].map((t)=>(
+          <button key={t.id} onClick={()=>setPage(t.id)} style={{ ...S.navBtn,background:page===t.id?"rgba(255,255,255,.2)":"transparent",borderBottom:page===t.id?"3px solid #fff":"3px solid transparent" }}>
+            <span>{t.label}</span>
+            <span style={{ fontSize:11,opacity:.7 }}>{t.th}</span>
+          </button>
+        ))}
+      </nav>
+      <div style={S.wave}>
+        <svg viewBox="0 0 1440 50" preserveAspectRatio="none" style={{ display:"block",width:"100%" }}>
+          <path d="M0,25 C360,50 720,0 1080,25 C1260,38 1380,15 1440,25 L1440,50 L0,50 Z" fill="#FAFAF8" />
+        </svg>
+      </div>
+    </header>
+  );
+}
+
+function ZoomCard({ compact }) {
+  return (
+    <div style={S.zoomCard}>
+      <div style={{ display:"flex",alignItems:"center",gap:10,marginBottom:compact?6:10 }}>
+        <span style={{ fontSize:compact?22:28 }}>📹</span>
+        <div>
+          <div style={{ fontWeight:700,fontSize:compact?14:15,color:"#1B4965" }}>Zoom Meeting Details</div>
+          {!compact && <div style={{ fontSize:12,color:"#888" }}>ข้อมูล Zoom สำหรับทุก session</div>}
+        </div>
+      </div>
+      <div style={S.zoomRow}><span style={S.zoomLabel}>Link</span><a href={ZOOM.link} target="_blank" rel="noreferrer" style={S.zoomLink}>Join Zoom Meeting ↗</a></div>
+      <div style={S.zoomRow}><span style={S.zoomLabel}>Meeting ID</span><span style={S.zoomVal}>{ZOOM.id}</span></div>
+      <div style={{ ...S.zoomRow,borderBottom:"none" }}><span style={S.zoomLabel}>Passcode</span><code style={S.zoomCode}>{ZOOM.passcode}</code></div>
+    </div>
+  );
+}
+
+function Steps({ step }) {
+  const items=[{n:1,l:"Team Info"},{n:2,l:"Select Slots"},{n:3,l:"Confirm"}];
+  return (
+    <div style={S.steps}>
+      {items.map((s,i)=>(
+        <div key={s.n} style={{ display:"flex",alignItems:"center",gap:6 }}>
+          <div style={{ ...S.stepDot,background:step>=s.n?"#1B4965":"#D5D3CD",color:step>=s.n?"#fff":"#999",transform:step===s.n?"scale(1.18)":"scale(1)",boxShadow:step===s.n?"0 2px 10px rgba(27,73,101,.25)":"none" }}>{step>s.n?"✓":s.n}</div>
+          <span style={{ fontSize:13,fontWeight:step===s.n?700:500,color:step>=s.n?"#1B4965":"#AAA" }}>{s.l}</span>
+          {i<items.length-1&&<div style={{ ...S.stepLine,background:step>s.n?"#1B4965":"#DDD" }}/>}
+        </div>
+      ))}
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   SLOT SELECTOR
+   ══════════════════════════════════════════════════════════════ */
+function SlotSelector({ selected, setSelected, bookings, onNext, onBack }) {
+  const [filter, setFilter] = useState("all");
+  const toggle = useCallback((id) => { setSelected((p) => p.includes(id) ? p.filter((x)=>x!==id) : [...p, id]); }, [setSelected]);
+
+  const grouped = useMemo(() => {
+    const fl = filter==="all" ? SLOTS : SLOTS.filter((s)=>s.facilitator===filter);
+    const g = {};
+    fl.forEach((s) => { if(!g[s.dateLabel]) g[s.dateLabel]={date:s.date,day:s.day,label:s.dateLabel,slots:[]}; g[s.dateLabel].slots.push(s); });
+    return Object.values(g).sort((a,b)=>a.date.localeCompare(b.date));
+  }, [filter]);
+
+  const avail=SLOTS.filter(s=>!bookings[s.id]).length;
+  const booked=SLOTS.filter(s=>bookings[s.id]).length;
+
+  return (
+    <div style={S.card} className="fade-up">
+      <h3 style={S.cardT}>📅 Available Slots / เลือกเวลาที่สะดวก</h3>
+      <p style={{ color:"#666",fontSize:14,marginBottom:14,lineHeight:1.6 }}>
+        Tap to select. Each session is <strong>30 min</strong> via Zoom. Availability updates <strong>in real time</strong>.<br/>
+        <span style={{ color:"#999",fontSize:13 }}>แตะเพื่อเลือก slot · อัปเดตสถานะแบบเรียลไทม์</span>
+      </p>
+      <div style={S.statsBar}>
+        <div style={S.statItem}><div style={{ ...S.statDot,background:"#2D6A4F" }}/><span>Available ({avail})</span></div>
+        <div style={S.statItem}><div style={{ ...S.statDot,background:"#C1121F" }}/><span>Booked ({booked})</span></div>
+        <div style={S.statItem}><div style={{ ...S.statDot,background:"#1B4965" }}/><span>Selected ({selected.length})</span></div>
+      </div>
+      <div style={S.filterRow}>
+        {[{id:"all",label:"All"},...FACILITATORS.map(f=>({id:f.id,label:f.icon+" "+f.name}))].map(o=>(
+          <button key={o.id} onClick={()=>setFilter(o.id)} style={{ ...S.filterBtn,background:filter===o.id?"#1B4965":"#F0EEEA",color:filter===o.id?"#fff":"#555" }}>{o.label}</button>
+        ))}
+      </div>
+      {grouped.map(grp=>(
+        <div key={grp.label} style={{ marginBottom:24 }}>
+          <div style={S.dateHdr}><span style={{ fontWeight:700,fontSize:16,color:"#1B4965" }}>{grp.label}</span><span style={S.dayBadge}>{grp.day}</span></div>
+          <div style={S.grid}>
+            {grp.slots.map(slot=>{
+              const f=FI(slot.facilitator); const isBooked=!!bookings[slot.id]; const isMine=selected.includes(slot.id); const bb=bookings[slot.id];
+              return (
+                <button key={slot.id} onClick={()=>!isBooked&&toggle(slot.id)} disabled={isBooked}
+                  style={{ ...S.slotBtn,borderColor:isMine?f.color:isBooked?"#E0DCDC":"#E8E6E1",background:isMine?f.light:isBooked?"#F5F3EF":"#fff",opacity:isBooked?.55:1,cursor:isBooked?"not-allowed":"pointer",transform:isMine?"translateY(-2px)":"none",boxShadow:isMine?"0 4px 16px "+f.color+"22":"0 1px 3px rgba(0,0,0,.04)" }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:6,marginBottom:6 }}>
+                    <span style={{ fontSize:16 }}>{f.icon}</span>
+                    <span style={{ fontWeight:700,fontSize:13,color:f.color }}>{f.name}</span>
+                    {isMine&&<span style={{ ...S.chk,background:f.color }}>✓</span>}
+                    {isBooked&&<span style={S.bookedTag}>Booked</span>}
+                  </div>
+                  <div style={{ fontWeight:700,fontSize:17,color:isBooked?"#AAA":"#2A2A28" }}>{slot.time}</div>
+                  <div style={{ fontSize:12,color:"#888",marginTop:2 }}>{slot.start<"14:00"?"☀️ Morning":"🌙 Evening"}</div>
+                  {isBooked&&<div style={S.lockedTeam}>🔒 {bb.team}</div>}
+                </button>
+              );
+            })}
+          </div>
+        </div>
+      ))}
+      <div style={S.bottomBar}>
+        <span style={{ fontSize:14,color:"#555" }}><strong style={{ color:"#1B4965",fontSize:22 }}>{selected.length}</strong> slot{selected.length!==1?"s":""} selected</span>
+        <div style={{ display:"flex",gap:10 }}>
+          <button style={S.btnS} onClick={onBack}>← Back</button>
+          <button style={{ ...S.btnP,opacity:selected.length>0?1:.4 }} disabled={selected.length===0} onClick={onNext}>Review & Confirm →</button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   BOOKING PAGE
+   ══════════════════════════════════════════════════════════════ */
+function BookingPage({ bookings, loading, book }) {
+  const [step, setStep] = useState(1);
+  const [team, setTeam] = useState("");
+  const [booker, setBooker] = useState("");
+  const [selected, setSelected] = useState([]);
+  const [confirmed, setConfirmed] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState(null);
+
+  useEffect(() => { if (!confirmed) setSelected(prev => prev.filter(id => !bookings[id])); }, [bookings, confirmed]);
+
+  const handleConfirm = async () => {
+    setSaving(true); setError(null);
+    try {
+      const taken = selected.filter(id => bookings[id]);
+      if (taken.length > 0) {
+        setSelected(prev => prev.filter(id => !bookings[id]));
+        setError("Some slots were just booked by another team! Please re-select. / บาง slot ถูกจองไปแล้ว กรุณาเลือกใหม่");
+        setSaving(false); setStep(2); return;
+      }
+      await book(selected, team, booker);
+      setConfirmed(true);
+      window.scrollTo({ top:0, behavior:"smooth" });
+    } catch (e) {
+      setError("Booking failed. Please try again. / การจองล้มเหลว กรุณาลองอีกครั้ง");
+    }
+    setSaving(false);
+  };
+
+  const handleReset = () => { setStep(1); setTeam(""); setBooker(""); setSelected([]); setConfirmed(false); setError(null); };
+
+  if (loading) return <div style={S.card}><p style={{ textAlign:"center",color:"#999",padding:32 }}>Connecting to server… / กำลังเชื่อมต่อ…</p></div>;
+
+  if (confirmed) {
+    const bookedSlots = SLOTS.filter(s=>selected.includes(s.id));
+    const downloadICS = () => { const b=new Blob([makeICS(bookedSlots,team,booker)],{type:"text/calendar"}); const a=document.createElement("a"); a.href=URL.createObjectURL(b); a.download="RELO2026_"+team.replace(/\s+/g,"_")+".ics"; a.click(); };
+    const copySummary = () => {
+      const lines=bookedSlots.map(s=>"  • "+s.dateLabel+" ("+s.day+") "+s.time+" — "+FI(s.facilitator).name);
+      navigator.clipboard.writeText("RELO 2026 Showcase — Booking Confirmation\n\nTeam: "+team+"\nBooked by: "+booker+"\n\nSessions:\n"+lines.join("\n")+"\n\nZoom: "+ZOOM.link+"\nMeeting ID: "+ZOOM.id+"\nPasscode: "+ZOOM.passcode).then(()=>alert("Copied! / คัดลอกแล้ว!"));
+    };
+    return (
+      <div style={S.card} className="fade-up">
+        <div style={{ textAlign:"center",padding:"10px 0 18px" }} className="pop-in">
+          <div style={{ fontSize:56 }}>🎉</div>
+          <h3 style={{ fontSize:22,color:"#1B4965",margin:"8px 0 2px",fontFamily:"'DM Serif Display',serif" }}>Booking Confirmed!</h3>
+          <p style={{ color:"#888",fontSize:13 }}>การจองของคุณได้รับการยืนยันเรียบร้อยแล้ว</p>
+        </div>
+        <div style={S.receipt}>
+          <div style={S.receiptHead}>
+            <div><div style={{ fontWeight:700 }}>RELO 2026 Showcase Project</div><div style={{ fontSize:11,opacity:.7,marginTop:2 }}>Booking Confirmation</div></div>
+            <div style={{ fontSize:11,opacity:.7 }}>{new Date().toLocaleDateString("en-GB",{day:"numeric",month:"short",year:"numeric"})}</div>
+          </div>
+          <div style={{ padding:"18px 20px" }}>
+            <div style={{ display:"grid",gridTemplateColumns:"1fr 1fr",gap:12,marginBottom:18 }}>
+              <div><div style={S.receiptLabel}>TEAM</div><div style={S.receiptVal}>{team}</div></div>
+              <div><div style={S.receiptLabel}>BOOKED BY</div><div style={S.receiptVal}>{booker}</div></div>
+            </div>
+            <div style={S.receiptLabel}>SCHEDULED SESSIONS ({bookedSlots.length})</div>
+            <div style={{ marginTop:8 }}>
+              {bookedSlots.map(slot=>{const f=FI(slot.facilitator);return(
+                <div key={slot.id} style={{ ...S.receiptSlot,borderLeftColor:f.color }}>
+                  <div style={{ display:"flex",alignItems:"center",gap:6 }}><span>{f.icon}</span><strong style={{ color:f.color,fontSize:14 }}>{f.name}</strong></div>
+                  <div style={{ fontSize:14,color:"#444",marginTop:2 }}>📅 {slot.dateLabel} ({slot.day}) · 🕐 {slot.time}</div>
+                </div>
+              );})}
+            </div>
+          </div>
+        </div>
+        <ZoomCard />
+        <div style={{ display:"flex",gap:10,marginTop:20,flexWrap:"wrap" }}>
+          <button style={S.btnP} onClick={downloadICS}>📥 Download Calendar (.ics)</button>
+          <button style={S.btnS} onClick={copySummary}>📋 Copy Summary</button>
+          <button style={{ ...S.btnS,color:"#C1121F",borderColor:"#C1121F33" }} onClick={handleReset}>↺ New Booking</button>
+        </div>
+      </div>
+    );
+  }
+
+  if (step===1) {
+    const ok=team.trim().length>=2&&booker.trim().length>=2;
+    return (
+      <React.Fragment>
+        <Steps step={1}/>
+        <div style={S.card} className="fade-up">
+          <h3 style={S.cardT}>👥 Team Information / ข้อมูลทีม</h3>
+          {error&&<div style={S.errBox}>{error}</div>}
+          <div style={S.fg}><label style={S.label}>Team Name / ชื่อทีม <span style={{color:"#C1121F"}}>*</span></label><input style={S.input} placeholder="e.g., Team Alpha" value={team} onChange={e=>setTeam(e.target.value)}/></div>
+          <div style={S.fg}><label style={S.label}>Booked by (Name) / ชื่อผู้จอง <span style={{color:"#C1121F"}}>*</span></label><input style={S.input} placeholder="e.g., Somchai Jaidee" value={booker} onChange={e=>setBooker(e.target.value)}/></div>
+          <button style={{ ...S.btnP,opacity:ok?1:.4,cursor:ok?"pointer":"not-allowed" }} disabled={!ok} onClick={()=>setStep(2)}>Continue to Slot Selection →</button>
+        </div>
+      </React.Fragment>
+    );
+  }
+
+  if (step===2) {
+    return (
+      <React.Fragment>
+        <Steps step={2}/>
+        {error&&<div style={{ ...S.errBox,marginBottom:16 }}>{error}</div>}
+        <SlotSelector selected={selected} setSelected={setSelected} bookings={bookings} onNext={()=>{setError(null);setStep(3);}} onBack={()=>setStep(1)}/>
+      </React.Fragment>
+    );
+  }
+
+  if (step===3) {
+    const bookedSlots=SLOTS.filter(s=>selected.includes(s.id));
+    return (
+      <React.Fragment>
+        <Steps step={3}/>
+        <div style={S.card} className="fade-up">
+          <h3 style={S.cardT}>✅ Review & Confirm / ตรวจสอบและยืนยัน</h3>
+          {error&&<div style={S.errBox}>{error}</div>}
+          <div style={S.sumBox}>
+            <div style={S.sumRow}><span style={S.sumL}>Team</span><span style={S.sumV}>{team}</span></div>
+            <div style={S.sumRow}><span style={S.sumL}>Booked by</span><span style={S.sumV}>{booker}</span></div>
+            <div style={{ ...S.sumRow,borderBottom:"none" }}><span style={S.sumL}>Sessions</span><span style={S.sumV}>{selected.length} slot{selected.length!==1?"s":""}</span></div>
+          </div>
+          <div style={{ marginTop:14 }}>
+            {bookedSlots.map(slot=>{const f=FI(slot.facilitator);return(
+              <div key={slot.id} style={{ ...S.cfSlot,borderLeftColor:f.color }}>
+                <div style={{ display:"flex",alignItems:"center",gap:6 }}><span>{f.icon}</span><strong style={{ color:f.color }}>{f.name}</strong></div>
+                <div style={{ fontSize:14,color:"#444",marginTop:3 }}>📅 {slot.dateLabel} ({slot.day}) · 🕐 {slot.time}</div>
+              </div>
+            );})}
+          </div>
+          <ZoomCard compact/>
+          <div style={{ display:"flex",gap:10,marginTop:20,flexWrap:"wrap" }}>
+            <button style={S.btnS} onClick={()=>setStep(2)}>← Edit Selection</button>
+            <button style={{ ...S.btnP,opacity:saving?.6:1 }} disabled={saving} onClick={handleConfirm}>
+              {saving ? "Saving… / กำลังบันทึก…" : "Confirm Booking ✓"}
+            </button>
+          </div>
+        </div>
+      </React.Fragment>
+    );
+  }
+  return null;
+}
+
+/* ══════════════════════════════════════════════════════════════
+   DASHBOARD
+   ══════════════════════════════════════════════════════════════ */
+function Dashboard({ bookings, loading }) {
+  const [filter,setFilter]=useState("all");
+  const [statusFilter,setStatusFilter]=useState("all");
+
+  const stats=useMemo(()=>{const b=SLOTS.filter(s=>bookings[s.id]).length;return{total:SLOTS.length,booked:b,avail:SLOTS.length-b};},[bookings]);
+
+  const grouped=useMemo(()=>{
+    let fl=SLOTS; if(filter!=="all") fl=fl.filter(s=>s.facilitator===filter); if(statusFilter==="available") fl=fl.filter(s=>!bookings[s.id]); if(statusFilter==="booked") fl=fl.filter(s=>bookings[s.id]);
+    const g={}; fl.forEach(s=>{if(!g[s.dateLabel]) g[s.dateLabel]={date:s.date,day:s.day,label:s.dateLabel,slots:[]};g[s.dateLabel].slots.push(s);}); return Object.values(g).sort((a,b)=>a.date.localeCompare(b.date));
+  },[filter,statusFilter,bookings]);
+
+  const teamBookings=useMemo(()=>{
+    const teams={}; Object.entries(bookings).forEach(([id,info])=>{if(!info||!info.team) return; const k=info.team;if(!teams[k]) teams[k]={team:info.team,booker:info.booker,ts:info.ts,slots:[]};const sl=SLOTS.find(s=>s.id===id);if(sl) teams[k].slots.push(sl);}); return Object.values(teams).sort((a,b)=>a.team.localeCompare(b.team));
+  },[bookings]);
+
+  const facStats=useMemo(()=>FACILITATORS.map(f=>{const t=SLOTS.filter(s=>s.facilitator===f.id).length;const b=SLOTS.filter(s=>s.facilitator===f.id&&bookings[s.id]).length;return{...f,total:t,booked:b};}),[bookings]);
+
+  if (loading) return <div style={S.card}><p style={{ textAlign:"center",color:"#999",padding:32 }}>Loading…</p></div>;
+
+  return (
+    <div>
+      <div style={S.card} className="fade-up">
+        <h3 style={S.cardT}>📊 Booking Overview / ภาพรวมการจอง</h3>
+        <div style={S.overviewGrid}>
+          <div style={{ ...S.overviewItem,borderLeftColor:"#1B4965" }}><div style={{ fontSize:28,fontWeight:800,color:"#1B4965" }}>{stats.total}</div><div style={{ fontSize:13,color:"#888" }}>Total Slots</div></div>
+          <div style={{ ...S.overviewItem,borderLeftColor:"#2D6A4F" }}><div style={{ fontSize:28,fontWeight:800,color:"#2D6A4F" }}>{stats.avail}</div><div style={{ fontSize:13,color:"#888" }}>Available</div></div>
+          <div style={{ ...S.overviewItem,borderLeftColor:"#C1121F" }}><div style={{ fontSize:28,fontWeight:800,color:"#C1121F" }}>{stats.booked}</div><div style={{ fontSize:13,color:"#888" }}>Booked</div></div>
+          <div style={{ ...S.overviewItem,borderLeftColor:"#7B2D8B" }}><div style={{ fontSize:28,fontWeight:800,color:"#7B2D8B" }}>{teamBookings.length}</div><div style={{ fontSize:13,color:"#888" }}>Teams</div></div>
+        </div>
+        <div style={{ marginTop:16 }}>
+          <div style={{ display:"flex",justifyContent:"space-between",fontSize:12,color:"#888",marginBottom:6 }}><span>Overall Capacity</span><span>{stats.total>0?Math.round(stats.booked/stats.total*100):0}% booked</span></div>
+          <div style={{ height:10,background:"#ECEAE5",borderRadius:8,overflow:"hidden" }}><div style={{ width:(stats.total>0?stats.booked/stats.total*100:0)+"%",height:"100%",background:"linear-gradient(90deg,#2D6A4F,#1B4965)",borderRadius:8,transition:"width .5s" }}/></div>
+        </div>
+        <div style={{ marginTop:20 }}>
+          {facStats.map(f=>(
+            <div key={f.id} style={{ marginBottom:12 }}>
+              <div style={{ display:"flex",justifyContent:"space-between",fontSize:13,marginBottom:4 }}><span style={{ fontWeight:600,color:f.color }}>{f.icon} {f.name}</span><span style={{ color:"#888" }}>{f.booked}/{f.total} booked</span></div>
+              <div style={{ height:7,background:"#ECEAE5",borderRadius:6,overflow:"hidden" }}><div style={{ width:(f.total>0?f.booked/f.total*100:0)+"%",height:"100%",background:f.color,borderRadius:6,transition:"width .5s" }}/></div>
+            </div>
+          ))}
+        </div>
+      </div>
+
+      {teamBookings.length>0&&(
+        <div style={{ ...S.card,marginTop:16 }} className="fade-up fade-d1">
+          <h3 style={S.cardT}>👥 Bookings by Team / การจองตามทีม</h3>
+          {teamBookings.map((tb,i)=>(
+            <div key={i} style={S.teamCard}>
+              <div style={{ display:"flex",justifyContent:"space-between",alignItems:"center",marginBottom:10,flexWrap:"wrap",gap:8 }}>
+                <div><div style={{ fontWeight:700,fontSize:16,color:"#1B4965" }}>{tb.team}</div><div style={{ fontSize:12,color:"#888" }}>Booked by {tb.booker} · {new Date(tb.ts).toLocaleDateString("en-GB",{day:"numeric",month:"short"})}</div></div>
+                <span style={S.teamCount}>{tb.slots.length} session{tb.slots.length!==1?"s":""}</span>
+              </div>
+              {tb.slots.sort((a,b)=>a.date.localeCompare(b.date)||a.start.localeCompare(b.start)).map(slot=>{const f=FI(slot.facilitator);return(
+                <div key={slot.id} style={{ ...S.teamSlot,borderLeftColor:f.color }}><span style={{ minWidth:110 }}>{f.icon} {f.name}</span><span style={{ color:"#555",minWidth:90 }}>{slot.dateLabel} ({slot.day})</span><span style={{ fontWeight:600 }}>{slot.time}</span></div>
+              );})}
+            </div>
+          ))}
+        </div>
+      )}
+
+      <div style={{ ...S.card,marginTop:16 }} className="fade-up fade-d2">
+        <h3 style={S.cardT}>🗓️ All Time Slots / ตารางเวลาทั้งหมด</h3>
+        <div style={{ display:"flex",gap:8,marginBottom:10,flexWrap:"wrap" }}>
+          {[{id:"all",l:"All Facilitators"},...FACILITATORS.map(f=>({id:f.id,l:f.icon+" "+f.name}))].map(o=>(
+            <button key={o.id} onClick={()=>setFilter(o.id)} style={{ ...S.filterBtn,background:filter===o.id?"#1B4965":"#F0EEEA",color:filter===o.id?"#fff":"#555" }}>{o.l}</button>
+          ))}
+        </div>
+        <div style={{ display:"flex",gap:8,marginBottom:20,flexWrap:"wrap" }}>
+          {[{id:"all",l:"All Status"},{id:"available",l:"🟢 Available"},{id:"booked",l:"🔴 Booked"}].map(o=>(
+            <button key={o.id} onClick={()=>setStatusFilter(o.id)} style={{ ...S.filterBtn,background:statusFilter===o.id?"#1B4965":"#F0EEEA",color:statusFilter===o.id?"#fff":"#555" }}>{o.l}</button>
+          ))}
+        </div>
+        {grouped.length===0&&<p style={{ textAlign:"center",color:"#AAA",padding:32 }}>No slots match your filters. / ไม่มี slot ที่ตรงกับตัวกรอง</p>}
+        {grouped.map(grp=>(
+          <div key={grp.label} style={{ marginBottom:24 }}>
+            <div style={S.dateHdr}><span style={{ fontWeight:700,fontSize:16,color:"#1B4965" }}>{grp.label}</span><span style={S.dayBadge}>{grp.day}</span></div>
+            {grp.slots.map(slot=>{const f=FI(slot.facilitator);const b=bookings[slot.id];return(
+              <div key={slot.id} style={{ ...S.dashSlot,borderLeftColor:b?"#C1121F":"#2D6A4F" }}>
+                <div style={{ display:"flex",alignItems:"center",gap:8,flex:"1 1 140px",minWidth:0 }}><span>{f.icon}</span><strong style={{ color:f.color,fontSize:14 }}>{f.name}</strong></div>
+                <div style={{ fontWeight:600,fontSize:15,flex:"0 0 auto" }}>{slot.time}</div>
+                <div style={{ flex:"1 1 180px",minWidth:0,textAlign:"right" }}>
+                  {b?(<span style={{ fontSize:13 }}><span style={S.lockedTeamInline}>🔒 {b.team}</span><span style={{ color:"#AAA",fontSize:11,marginLeft:8 }}>by {b.booker}</span></span>):(<span style={S.availBadge}>✓ Available</span>)}
+                </div>
+              </div>
+            );})}
+          </div>
+        ))}
+      </div>
+
+      <div style={{ ...S.card,marginTop:16 }}><h3 style={S.cardT}>📹 Zoom Details for All Sessions</h3><ZoomCard/></div>
+    </div>
+  );
+}
+
+/* ══════════════════════════════════════════════════════════════
+   ROOT — render LAST after all definitions
+   ══════════════════════════════════════════════════════════════ */
+function App() {
+  const [page, setPage] = useState("book");
+  const { bookings, loading, connected, book } = useBookings();
+  return (
+    <div style={{ minHeight:"100vh" }}>
+      <Header page={page} setPage={setPage} connected={connected} />
+      <main style={S.main}>
+        {page==="book" ? <BookingPage bookings={bookings} loading={loading} book={book}/> : <Dashboard bookings={bookings} loading={loading}/>}
+      </main>
+      <footer style={S.footer}>
+        <div>RELO 2026 Showcase Project · Thailand TESOL & RELO Thailand</div>
+        <div style={{ fontSize:11,marginTop:3,opacity:.5 }}>All consultations via Zoom · 30 min per session · Real-time sync via Firebase</div>
+      </footer>
+    </div>
+  );
+}
+
+ReactDOM.createRoot(document.getElementById("root")).render(<App />);
+</script>
+</body>
+</html>
