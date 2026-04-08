@@ -144,7 +144,23 @@ const SLOTS = [
   {id:"y5",facilitator:"yungie",date:"2026-04-21",day:"Tue",dateLabel:"Apr 21",time:"18:00–18:30",start:"18:00",end:"18:30"},
   {id:"y6",facilitator:"yungie",date:"2026-04-21",day:"Tue",dateLabel:"Apr 21",time:"18:40–19:10",start:"18:40",end:"19:10"},
   {id:"y7",facilitator:"yungie",date:"2026-04-21",day:"Tue",dateLabel:"Apr 21",time:"19:20–19:50",start:"19:20",end:"19:50"},
+  // ── Round 2: Aj. Yungie additional slots ──
+  {id:"y8",facilitator:"yungie",date:"2026-04-10",day:"Fri",dateLabel:"Apr 10",time:"18:00–18:30",start:"18:00",end:"18:30",round:2},
+  {id:"y9",facilitator:"yungie",date:"2026-04-10",day:"Fri",dateLabel:"Apr 10",time:"18:40–19:10",start:"18:40",end:"19:10",round:2},
+  {id:"y10",facilitator:"yungie",date:"2026-04-10",day:"Fri",dateLabel:"Apr 10",time:"19:20–19:50",start:"19:20",end:"19:50",round:2},
+  {id:"y11",facilitator:"yungie",date:"2026-04-11",day:"Sat",dateLabel:"Apr 11",time:"18:00–18:30",start:"18:00",end:"18:30",round:2},
+  {id:"y12",facilitator:"yungie",date:"2026-04-11",day:"Sat",dateLabel:"Apr 11",time:"18:40–19:10",start:"18:40",end:"19:10",round:2},
+  {id:"y13",facilitator:"yungie",date:"2026-04-11",day:"Sat",dateLabel:"Apr 11",time:"19:20–19:50",start:"19:20",end:"19:50",round:2},
+  {id:"y14",facilitator:"yungie",date:"2026-04-17",day:"Fri",dateLabel:"Apr 17",time:"18:00–18:30",start:"18:00",end:"18:30",round:2},
+  {id:"y15",facilitator:"yungie",date:"2026-04-17",day:"Fri",dateLabel:"Apr 17",time:"18:40–19:10",start:"18:40",end:"19:10",round:2},
+  {id:"y16",facilitator:"yungie",date:"2026-04-17",day:"Fri",dateLabel:"Apr 17",time:"19:20–19:50",start:"19:20",end:"19:50",round:2},
+  {id:"y17",facilitator:"yungie",date:"2026-04-18",day:"Sat",dateLabel:"Apr 18",time:"18:00–18:30",start:"18:00",end:"18:30",round:2},
+  {id:"y18",facilitator:"yungie",date:"2026-04-18",day:"Sat",dateLabel:"Apr 18",time:"18:40–19:10",start:"18:40",end:"19:10",round:2},
+  {id:"y19",facilitator:"yungie",date:"2026-04-18",day:"Sat",dateLabel:"Apr 18",time:"19:20–19:50",start:"19:20",end:"19:50",round:2},
 ];
+
+const SLOTS_R1 = SLOTS.filter(s => !s.round);
+const SLOTS_R2 = SLOTS.filter(s => s.round === 2);
 
 const FI = (id) => FACILITATORS.find((f)=>f.id===id);
 
@@ -193,7 +209,7 @@ function makeICS(slots,team,booker){
 function LiveBadge({connected}){return(<span style={{display:"inline-flex",alignItems:"center",gap:5,fontSize:11,fontWeight:600,color:connected?"#2D6A4F":"#C1121F",background:connected?"#D8F3DC":"#FCEAE8",padding:"3px 10px",borderRadius:20}}><span className={connected?"live-dot":""} style={connected?{}:{width:8,height:8,borderRadius:"50%",background:"#C1121F",display:"inline-block"}}/>{connected?"Live":"Offline"}</span>);}
 
 function Header({page,setPage,connected}){
-  const tabs=[{id:"book",label:"📅 Book",th:"จองเวลา"},{id:"manage",label:"📝 Manage",th:"แก้ไข/ยกเลิก"},{id:"dashboard",label:"📊 All Bookings",th:"ดูทั้งหมด"}];
+  const tabs=[{id:"book",label:"📅 Round 1",th:"จองรอบ 1"},{id:"book2",label:"📅 Round 2",th:"จองรอบ 2 (ใหม่)"},{id:"manage",label:"📝 Manage",th:"แก้ไข/ยกเลิก"},{id:"dashboard",label:"📊 All Bookings",th:"ดูทั้งหมด"}];
   return(
     <header style={S.header}>
       <div style={S.headerInner}>
@@ -225,17 +241,19 @@ function ZoomCard({compact}){return(
 function Steps({step}){const items=[{n:1,l:"Team Info"},{n:2,l:"Select Slots"},{n:3,l:"Confirm"}];return(<div style={S.steps}>{items.map((s,i)=>(<div key={s.n} style={{display:"flex",alignItems:"center",gap:6}}><div style={{...S.stepDot,background:step>=s.n?"#1B4965":"#D5D3CD",color:step>=s.n?"#fff":"#999",transform:step===s.n?"scale(1.18)":"scale(1)",boxShadow:step===s.n?"0 2px 10px rgba(27,73,101,.25)":"none"}}>{step>s.n?"✓":s.n}</div><span style={{fontSize:13,fontWeight:step===s.n?700:500,color:step>=s.n?"#1B4965":"#AAA"}}>{s.l}</span>{i<items.length-1&&<div style={{...S.stepLine,background:step>s.n?"#1B4965":"#DDD"}}/>}</div>))}</div>);}
 
 /* ═══ SLOT SELECTOR ═══ */
-function SlotSelector({selected,setSelected,bookings,onNext,onBack}){
+function SlotSelector({selected,setSelected,bookings,onNext,onBack,slotPool}){
+  const pool=slotPool||SLOTS;
   const [filter,setFilter]=useState("all");
   const toggle=useCallback(id=>{setSelected(p=>p.includes(id)?p.filter(x=>x!==id):[...p,id]);},[setSelected]);
-  const grouped=useMemo(()=>{const fl=filter==="all"?SLOTS:SLOTS.filter(s=>s.facilitator===filter);const g={};fl.forEach(s=>{if(!g[s.dateLabel])g[s.dateLabel]={date:s.date,day:s.day,label:s.dateLabel,slots:[]};g[s.dateLabel].slots.push(s);});return Object.values(g).sort((a,b)=>a.date.localeCompare(b.date));},[filter]);
-  const avail=SLOTS.filter(s=>!bookings[s.id]).length;const booked=SLOTS.filter(s=>bookings[s.id]).length;
+  const grouped=useMemo(()=>{const fl=filter==="all"?pool:pool.filter(s=>s.facilitator===filter);const g={};fl.forEach(s=>{if(!g[s.dateLabel])g[s.dateLabel]={date:s.date,day:s.day,label:s.dateLabel,slots:[]};g[s.dateLabel].slots.push(s);});return Object.values(g).sort((a,b)=>a.date.localeCompare(b.date));},[filter,pool]);
+  const avail=pool.filter(s=>!bookings[s.id]).length;const booked=pool.filter(s=>bookings[s.id]).length;
+  const poolFacilitators=useMemo(()=>{const ids=[...new Set(pool.map(s=>s.facilitator))];return FACILITATORS.filter(f=>ids.includes(f.id));},[pool]);
   return(
     <div style={S.card} className="fade-up">
       <h3 style={S.cardT}>📅 Available Slots / เลือกเวลาที่สะดวก</h3>
       <p style={{color:"#666",fontSize:14,marginBottom:14,lineHeight:1.6}}>Tap to select. Each session is <strong>30 min</strong> via Zoom. Availability updates <strong>in real time</strong>.<br/><span style={{color:"#999",fontSize:13}}>แตะเพื่อเลือก slot · อัปเดตสถานะแบบเรียลไทม์</span></p>
       <div style={S.statsBar}><div style={S.statItem}><div style={{...S.statDot,background:"#2D6A4F"}}/><span>Available ({avail})</span></div><div style={S.statItem}><div style={{...S.statDot,background:"#C1121F"}}/><span>Booked ({booked})</span></div><div style={S.statItem}><div style={{...S.statDot,background:"#1B4965"}}/><span>Selected ({selected.length})</span></div></div>
-      <div style={S.filterRow}>{[{id:"all",label:"All"},...FACILITATORS.map(f=>({id:f.id,label:f.icon+" "+f.name}))].map(o=>(<button key={o.id} onClick={()=>setFilter(o.id)} style={{...S.filterBtn,background:filter===o.id?"#1B4965":"#F0EEEA",color:filter===o.id?"#fff":"#555"}}>{o.label}</button>))}</div>
+      <div style={S.filterRow}>{[{id:"all",label:"All"},...poolFacilitators.map(f=>({id:f.id,label:f.icon+" "+f.name}))].map(o=>(<button key={o.id} onClick={()=>setFilter(o.id)} style={{...S.filterBtn,background:filter===o.id?"#1B4965":"#F0EEEA",color:filter===o.id?"#fff":"#555"}}>{o.label}</button>))}</div>
       {grouped.map(grp=>(<div key={grp.label} style={{marginBottom:24}}><div style={S.dateHdr}><span style={{fontWeight:700,fontSize:16,color:"#1B4965"}}>{grp.label}</span><span style={S.dayBadge}>{grp.day}</span></div><div style={S.grid}>{grp.slots.map(slot=>{const f=FI(slot.facilitator);const isB=!!bookings[slot.id];const isM=selected.includes(slot.id);const bb=bookings[slot.id];return(<button key={slot.id} onClick={()=>!isB&&toggle(slot.id)} disabled={isB} style={{...S.slotBtn,borderColor:isM?f.color:isB?"#E0DCDC":"#E8E6E1",background:isM?f.light:isB?"#F5F3EF":"#fff",opacity:isB?.55:1,cursor:isB?"not-allowed":"pointer",transform:isM?"translateY(-2px)":"none",boxShadow:isM?"0 4px 16px "+f.color+"22":"0 1px 3px rgba(0,0,0,.04)"}}><div style={{display:"flex",alignItems:"center",gap:6,marginBottom:6}}><span style={{fontSize:16}}>{f.icon}</span><span style={{fontWeight:700,fontSize:13,color:f.color}}>{f.name}</span>{isM&&<span style={{...S.chk,background:f.color}}>✓</span>}{isB&&<span style={S.bookedTag}>Booked</span>}</div><div style={{fontWeight:700,fontSize:17,color:isB?"#AAA":"#2A2A28"}}>{slot.time}</div><div style={{fontSize:12,color:"#888",marginTop:2}}>{slot.start<"14:00"?"☀️ Morning":"🌙 Evening"}</div>{isB&&<div style={S.lockedTeam}>🔒 {bb.team}</div>}</button>);})}</div></div>))}
       <div style={S.bottomBar}><span style={{fontSize:14,color:"#555"}}><strong style={{color:"#1B4965",fontSize:22}}>{selected.length}</strong> slot{selected.length!==1?"s":""} selected</span><div style={{display:"flex",gap:10}}><button style={S.btnS} onClick={onBack}>← Back</button><button style={{...S.btnP,opacity:selected.length>0?1:.4}} disabled={selected.length===0} onClick={onNext}>Review & Confirm →</button></div></div>
     </div>
@@ -243,7 +261,8 @@ function SlotSelector({selected,setSelected,bookings,onNext,onBack}){
 }
 
 /* ═══ BOOKING PAGE ═══ */
-function BookingPage({bookings,loading,book}){
+function BookingPage({bookings,loading,book,slotPool,roundLabel}){
+  const pool=slotPool||SLOTS_R1;
   const [step,setStep]=useState(1);const [team,setTeam]=useState("");const [booker,setBooker]=useState("");const [selected,setSelected]=useState([]);const [confirmed,setConfirmed]=useState(false);const [saving,setSaving]=useState(false);const [error,setError]=useState(null);
   useEffect(()=>{if(!confirmed)setSelected(p=>p.filter(id=>!bookings[id]));},[bookings,confirmed]);
   const handleConfirm=async()=>{setSaving(true);setError(null);try{const taken=selected.filter(id=>bookings[id]);if(taken.length>0){setSelected(p=>p.filter(id=>!bookings[id]));setError("Some slots were just booked by another team! Please re-select. / บาง slot ถูกจองไปแล้ว");setSaving(false);setStep(2);return;}await book(selected,team,booker);setConfirmed(true);window.scrollTo({top:0,behavior:"smooth"});}catch(e){setError("Booking failed. Please try again. / การจองล้มเหลว");}setSaving(false);};
@@ -265,7 +284,7 @@ function BookingPage({bookings,loading,book}){
 
   if(step===1){const ok=team.trim().length>=2&&booker.trim().length>=2;return(<React.Fragment><Steps step={1}/><div style={S.card} className="fade-up"><h3 style={S.cardT}>👥 Team Information / ข้อมูลทีม</h3>{error&&<div style={S.errBox}>{error}</div>}<div style={S.fg}><label style={S.label}>Team Name / ชื่อทีม <span style={{color:"#C1121F"}}>*</span></label><input style={S.input} placeholder="e.g., Team Alpha" value={team} onChange={e=>setTeam(e.target.value)}/></div><div style={S.fg}><label style={S.label}>Booked by (Name) / ชื่อผู้จอง <span style={{color:"#C1121F"}}>*</span></label><input style={S.input} placeholder="e.g., Somchai Jaidee" value={booker} onChange={e=>setBooker(e.target.value)}/></div><button style={{...S.btnP,opacity:ok?1:.4,cursor:ok?"pointer":"not-allowed"}} disabled={!ok} onClick={()=>setStep(2)}>Continue to Slot Selection →</button></div></React.Fragment>);}
 
-  if(step===2){return(<React.Fragment><Steps step={2}/>{error&&<div style={{...S.errBox,marginBottom:16}}>{error}</div>}<SlotSelector selected={selected} setSelected={setSelected} bookings={bookings} onNext={()=>{setError(null);setStep(3);}} onBack={()=>setStep(1)}/></React.Fragment>);}
+  if(step===2){return(<React.Fragment><Steps step={2}/>{error&&<div style={{...S.errBox,marginBottom:16}}>{error}</div>}<SlotSelector selected={selected} setSelected={setSelected} bookings={bookings} slotPool={pool} onNext={()=>{setError(null);setStep(3);}} onBack={()=>setStep(1)}/></React.Fragment>);}
 
   if(step===3){const bs=SLOTS.filter(s=>selected.includes(s.id));return(<React.Fragment><Steps step={3}/><div style={S.card} className="fade-up"><h3 style={S.cardT}>✅ Review & Confirm / ตรวจสอบและยืนยัน</h3>{error&&<div style={S.errBox}>{error}</div>}<div style={S.sumBox}><div style={S.sumRow}><span style={S.sumL}>Team</span><span style={S.sumV}>{team}</span></div><div style={S.sumRow}><span style={S.sumL}>Booked by</span><span style={S.sumV}>{booker}</span></div><div style={{...S.sumRow,borderBottom:"none"}}><span style={S.sumL}>Sessions</span><span style={S.sumV}>{selected.length} slot{selected.length!==1?"s":""}</span></div></div><div style={{marginTop:14}}>{bs.map(slot=>{const f=FI(slot.facilitator);return(<div key={slot.id} style={{...S.cfSlot,borderLeftColor:f.color}}><div style={{display:"flex",alignItems:"center",gap:6}}><span>{f.icon}</span><strong style={{color:f.color}}>{f.name}</strong></div><div style={{fontSize:14,color:"#444",marginTop:3}}>📅 {slot.dateLabel} ({slot.day}) · 🕐 {slot.time}</div></div>);})}</div><ZoomCard compact/><div style={{display:"flex",gap:10,marginTop:20,flexWrap:"wrap"}}><button style={S.btnS} onClick={()=>setStep(2)}>← Edit Selection</button><button style={{...S.btnP,opacity:saving?.6:1}} disabled={saving} onClick={handleConfirm}>{saving?"Saving…":"Confirm Booking ✓"}</button></div></div></React.Fragment>);}
   return null;
@@ -416,7 +435,8 @@ function App(){
     <div style={{minHeight:"100vh"}}>
       <Header page={page} setPage={setPage} connected={connected}/>
       <main style={S.main}>
-        {page==="book"&&<BookingPage bookings={bookings} loading={loading} book={book}/>}
+        {page==="book"&&<BookingPage key="r1" bookings={bookings} loading={loading} book={book} slotPool={SLOTS_R1} roundLabel="Round 1"/>}
+        {page==="book2"&&<BookingPage key="r2" bookings={bookings} loading={loading} book={book} slotPool={SLOTS_R2} roundLabel="Round 2"/>}
         {page==="manage"&&<ManagePage bookings={bookings} loading={loading} cancelSlot={cancelSlot} cancelAll={cancelAll}/>}
         {page==="dashboard"&&<Dashboard bookings={bookings} loading={loading}/>}
       </main>
